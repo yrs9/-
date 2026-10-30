@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,63 +18,40 @@ class PS4RemoteApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'PS4 Remote Play Pro',
+      title: 'PS4 Jailbreak Streamer',
       theme: ThemeData.dark(),
-      home: const PairingScreen(),
+      home: const ConnectionScreen(),
     );
   }
 }
 
-class PairingScreen extends StatefulWidget {
-  const PairingScreen({super.key});
+class ConnectionScreen extends StatefulWidget {
+  const ConnectionScreen({super.key});
 
   @override
-  State<PairingScreen> createState() => _PairingScreenState();
+  State<ConnectionScreen> createState() => _ConnectionScreenState();
 }
 
-class _PairingScreenState extends State<PairingScreen> {
+class _ConnectionScreenState extends State<ConnectionScreen> {
   final TextEditingController _ipController = TextEditingController(text: '192.168.0.131');
-  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _portController = TextEditingController(text: '8080');
   bool _isConnecting = false;
-  String _statusText = '';
 
-  Future<void> _startPairing() async {
-    final ipStr = _ipController.text.trim();
-    final pinStr = _pinController.text.trim();
+  void _connectToPS4() {
+    final ip = _ipController.text.trim();
+    final port = _portController.text.trim();
 
-    if (ipStr.isEmpty || pinStr.isEmpty) {
+    if (ip.isEmpty || port.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال الـ IP ورمز الـ PIN')),
+        const SnackBar(content: Text('الرجاء إدخال الـ IP ورقم البورت بشكل صحيح')),
       );
       return;
     }
 
-    setState(() {
-      _isConnecting = true;
-      _statusText = 'جاري إرسال حزم الـ UDP للـ PS4...';
-    });
-
-    try {
-      // استخدام RawDatagramSocket لإرسال حزم المصادقة الثنائية عبر منفذ Remote Play (9295)
-      final targetAddress = InternetAddress(ipStr);
-      final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      
-      // تجهيز حزمة الطلب الثنائية المخصصة للاقتران برمز الـ PIN
-      final List<int> pinBytes = pinStr.codeUnits;
-      final List<int> packet = [0x00, 0x01, 0x00, pinBytes.length, ...pinBytes];
-      
-      socket.send(packet, targetAddress, 9295);
-      socket.close();
-    } catch (_) {}
-
-    await Future.delayed(const Duration(seconds: 15));
-    if (!mounted) return;
-    
-    setState(() => _isConnecting = false);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => RemotePlayScreen(ps4Ip: ipStr),
+        builder: (context) => StreamControllerScreen(ps4Ip: ip, ps4Port: port),
       ),
     );
   }
@@ -90,10 +67,10 @@ class _PairingScreenState extends State<PairingScreen> {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.gamepad, size: 70, color: Colors.blueAccent),
+                  Icon(Icons.sports_esports, size: 70, color: Colors.blueAccent),
                   SizedBox(height: 10),
-                  Text('PS4 Remote Play (Jailbreak)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('إرسال حزم بروتوكول الـ UDP المباشر', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('PS4 Jailbreak Direct Stream', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('اتصال مباشر بخادم البث المعدل', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
             ),
@@ -106,27 +83,18 @@ class _PairingScreenState extends State<PairingScreen> {
                 children: [
                   TextField(
                     controller: _ipController,
-                    decoration: const InputDecoration(labelText: 'IP Address', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'PS4 IP Address', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 15),
                   TextField(
-                    controller: _pinController,
-                    decoration: const InputDecoration(labelText: 'PIN Code (من التلفزيون)', border: OutlineInputBorder()),
+                    controller: _portController,
+                    decoration: const InputDecoration(labelText: 'Server Port (مثال: 8080)', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _isConnecting ? null : _startPairing,
+                    onPressed: _connectToPS4,
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, minimumSize: const Size.fromHeight(45)),
-                    child: _isConnecting
-                        ? Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-                              const SizedBox(width: 10),
-                              Text(_statusText, style: const TextStyle(fontSize: 12)),
-                            ],
-                          )
-                        : const Text('اقتران عبر UDP وبدء البث'),
+                    child: const Text('اتصال وعرض الشاشة'),
                   )
                 ],
               ),
@@ -138,45 +106,25 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 }
 
-class RemotePlayScreen extends StatefulWidget {
+class StreamControllerScreen extends StatefulWidget {
   final String ps4Ip;
-  const RemotePlayScreen({super.key, required this.ps4Ip});
+  final String ps4Port;
+  const StreamControllerScreen({super.key, required this.ps4Ip, required this.ps4Port});
 
   @override
-  State<RemotePlayScreen> createState() => _RemotePlayScreenState();
+  State<StreamControllerScreen> createState() => _StreamControllerScreenState();
 }
 
-class _RemotePlayScreenState extends State<RemotePlayScreen> {
-  RawDatagramSocket? _udpSocket;
-
-  @override
-  void initState() {
-    super.initState();
-    _initUdpController();
-  }
-
-  void _initUdpController() async {
+class _StreamControllerScreenState extends State<StreamControllerScreen> {
+  Future<void> _sendAction(String action) async {
     try {
-      _udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      await http.get(
+        Uri.parse('http://${widget.ps4Ip}:${widget.ps4Port}/cmd?action=$action'),
+      ).timeout(const Duration(milliseconds: 200));
     } catch (_) {}
   }
 
-  void _sendUdpCmd(String action) {
-    if (_udpSocket == null) return;
-    try {
-      final targetAddress = InternetAddress(widget.ps4Ip);
-      final List<int> data = action.codeUnits;
-      _udpSocket!.send(data, targetAddress, 9297); // منفذ التحكم في الـ Remote Play
-    } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _udpSocket?.close();
-    super.dispose();
-  }
-
-  Widget _buildCtrlBtn(String label, VoidCallback onPressed, {Color? color}) {
+  Widget _buildButton(String label, VoidCallback onPressed, {Color? color}) {
     return SizedBox(
       width: 48,
       height: 48,
@@ -195,21 +143,38 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final streamUrl = 'http://${widget.ps4Ip}:${widget.ps4Port}/stream';
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          // 1. عرض خادم الفيديو المباشر من الـ PS4 المعدل
           Center(
             child: Container(
               color: Colors.grey[900],
-              child: const Center(
-                child: Text(
-                  'قناة UDP النشطة - بانتظار إطارات الفيديو (H.264)',
-                  style: TextStyle(color: Colors.white54, fontSize: 13),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.videocam_outlined, size: 40, color: Colors.blueAccent),
+                    const SizedBox(height: 10),
+                    Text(
+                      'متصل بالخادم: $streamUrl',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'جاري استقبال تدفق الصورة من الـ PS4 المعدل...',
+                      style: TextStyle(color: Colors.green, fontSize: 11),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+
+          // 2. أزرار التحكم الشفافة فوق شاشة اللعبة
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12.0),
@@ -221,9 +186,9 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
                     children: [
                       Row(
                         children: [
-                          _buildCtrlBtn('L2', () => _sendUdpCmd('L2')),
+                          _buildButton('L2', () => _sendAction('L2')),
                           const SizedBox(width: 6),
-                          _buildCtrlBtn('L1', () => _sendUdpCmd('L1')),
+                          _buildButton('L1', () => _sendAction('L1')),
                         ],
                       ),
                       IconButton(
@@ -231,15 +196,15 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const PairingScreen()),
+                            MaterialPageRoute(builder: (context) => const ConnectionScreen()),
                           );
                         },
                       ),
                       Row(
                         children: [
-                          _buildCtrlBtn('R1', () => _sendUdpCmd('R1')),
+                          _buildButton('R1', () => _sendAction('R1')),
                           const SizedBox(width: 6),
-                          _buildCtrlBtn('R2', () => _sendUdpCmd('R2')),
+                          _buildButton('R2', () => _sendAction('R2')),
                         ],
                       ),
                     ],
@@ -249,28 +214,28 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
                     children: [
                       Column(
                         children: [
-                          _buildCtrlBtn('▲', () => _sendUdpCmd('up')),
+                          _buildButton('▲', () => _sendAction('up')),
                           Row(
                             children: [
-                              _buildCtrlBtn('◄', () => _sendUdpCmd('left')),
+                              _buildButton('◄', () => _sendAction('left')),
                               const SizedBox(width: 35),
-                              _buildCtrlBtn('►', () => _sendUdpCmd('right')),
+                              _buildButton('►', () => _sendAction('right')),
                             ],
                           ),
-                          _buildCtrlBtn('▼', () => _sendUdpCmd('down')),
+                          _buildButton('▼', () => _sendAction('down')),
                         ],
                       ),
                       Column(
                         children: [
-                          _buildCtrlBtn('△', () => _sendUdpCmd('triangle'), color: Colors.green.withOpacity(0.7)),
+                          _buildButton('△', () => _sendAction('triangle'), color: Colors.green.withOpacity(0.7)),
                           Row(
                             children: [
-                              _buildCtrlBtn('□', () => _sendUdpCmd('square'), color: Colors.pink.withOpacity(0.7)),
+                              _buildButton('□', () => _sendAction('square'), color: Colors.pink.withOpacity(0.7)),
                               const SizedBox(width: 35),
-                              _buildCtrlBtn('◯', () => _sendUdpCmd('circle'), color: Colors.red.withOpacity(0.7)),
+                              _buildButton('◯', () => _sendAction('circle'), color: Colors.red.withOpacity(0.7)),
                             ],
                           ),
-                          _buildCtrlBtn('✕', () => _sendUdpCmd('cross'), color: Colors.blue.withOpacity(0.7)),
+                          _buildButton('✕', () => _sendAction('cross'), color: Colors.blue.withOpacity(0.7)),
                         ],
                       ),
                     ],
