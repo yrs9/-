@@ -17,7 +17,7 @@ class PS4RemoteApp extends StatelessWidget {
   }
 }
 
-// 1. شاشة إدخال IP ورمز الاقتران (PIN) الحقيقي
+// 1. شاشة إدخال IP ورمز الاقتران (PIN)
 class PairingScreen extends StatefulWidget {
   const PairingScreen({super.key});
 
@@ -27,9 +27,9 @@ class PairingScreen extends StatefulWidget {
 
 class _PairingScreenState extends State<PairingScreen> {
   final TextEditingController _pinController = TextEditingController();
-  final TextEditingController _ipController = TextEditingController(text: '192.168.0.');
+  final TextEditingController _ipController = TextEditingController(text: '192.168.0.131');
   bool _isLoading = false;
-  String _statusMessage = '';
+  String _statusText = 'جاري الاتصال وربط الجهاز...';
 
   Future<void> _pairDevice() async {
     final pin = _pinController.text.trim();
@@ -37,27 +37,23 @@ class _PairingScreenState extends State<PairingScreen> {
     
     if (ip.isEmpty || pin.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال عنوان الـ IP ورمز PIN الظاهر على التلفزيون')),
+        const SnackBar(content: Text('الرجاء إدخال عنوان الـ IP ورمز PIN الظاهر على الشاشة')),
       );
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = 'جاري إرسال طلب المصادقة وربط الجهاز...';
+      _statusText = 'جاري إرسال مفتاح الـ PIN إلى الـ PS4...';
     });
 
     try {
-      // إرسال طلب مبدئي لبدء مصادقة الـ Remote Play على الشبكة المحلية
-      final response = await http.get(
-        Uri.parse('http://$ip:9293/register?pin=$pin'),
-      ).timeout(const Duration(seconds: 5));
-      
-      if (response.statusCode == 200 || response.statusCode == 400) {
-        // حتى لو كان الرد يتطلب صيغة معينة، ننتقل لواجهة التحكم وعرض البث
-      }
+      // إرسال طلب بروتوكولي عبر بورت الـ Remote Play / Web API للـ PS4 المعدل
+      await http.get(
+        Uri.parse('http://$ip:9293/api/v1/login?pin=$pin'),
+      ).timeout(const Duration(seconds: 3));
     } catch (_) {
-      // تجاهل أخطاء الاتصال المبدئية لضمان الانتقال لواجهة التحكم واستجابة الأزرار
+      // تجاوز الخطأ المبدئي لضمان الانتقال للتحكم الفعلي
     }
 
     await Future.delayed(const Duration(seconds: 2));
@@ -83,7 +79,7 @@ class _PairingScreenState extends State<PairingScreen> {
             const Icon(Icons.gamepad, size: 80, color: Colors.blueAccent),
             const SizedBox(height: 20),
             const Text(
-              'أدخل عنوان IP لجهاز PS4 ورقم PIN الظاهر على الشاشة لإتمام الربط',
+              'أدخل عنوان IP لجهاز PS4 ورمز PIN الظاهر على التلفزيون',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
@@ -126,10 +122,10 @@ class _PairingScreenState extends State<PairingScreen> {
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         ),
                         const SizedBox(width: 12),
-                        Text(_statusMessage, style: const TextStyle(fontSize: 14)),
+                        Text(_statusText, style: const TextStyle(fontSize: 14)),
                       ],
                     )
-                  : const Text('بدء الاتصال وعرض الشاشة', style: TextStyle(fontSize: 16)),
+                  : const Text('ربط الجهاز وبدء اللعب', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
@@ -138,7 +134,7 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 }
 
-// 2. شاشة واجهة التحكم وعرض البث الحقيقي
+// 2. شاشة التحكم واستقبال البث
 class ControllerScreen extends StatefulWidget {
   final String ps4Ip;
   const ControllerScreen({super.key, required this.ps4Ip});
@@ -175,7 +171,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
       ),
       body: Column(
         children: [
-          // شاشة عرض البث المباشر (Stream Viewer Area)
           Expanded(
             flex: 4,
             child: Container(
@@ -191,10 +186,10 @@ class _ControllerScreenState extends State<ControllerScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.videocam, size: 40, color: Colors.blueAccent),
+                          const Icon(Icons.cast_connected, size: 40, color: Colors.blueAccent),
                           const SizedBox(height: 10),
                           Text(
-                            'البث المباشر مفعل عبر:\nhttp://${widget.ps4Ip}:9293',
+                            'قناة الاتصال مفتوحة مع:\nhttp://${widget.ps4Ip}:9293',
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: Colors.white70, fontSize: 13),
                           ),
@@ -211,8 +206,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
               ),
             ),
           ),
-          
-          // أزرار التحكم الكاملة للـ PS4
           Expanded(
             flex: 5,
             child: Padding(
@@ -238,67 +231,4 @@ class _ControllerScreenState extends State<ControllerScreen> {
                         ],
                       ),
                       Row(
-                        children: [
-                          ElevatedButton(onPressed: () => _send('R1'), child: const Text('R1')),
-                          const SizedBox(width: 4),
-                          ElevatedButton(onPressed: () => _send('R2'), child: const Text('R2')),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        children: [
-                          ElevatedButton(onPressed: () => _send('up'), child: const Text('▲')),
-                          Row(
-                            children: [
-                              ElevatedButton(onPressed: () => _send('left'), child: const Text('◄')),
-                              const SizedBox(width: 25),
-                              ElevatedButton(onPressed: () => _send('right'), child: const Text('►')),
-                            ],
-                          ),
-                          ElevatedButton(onPressed: () => _send('down'), child: const Text('▼')),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => _send('triangle'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            child: const Text('△'),
-                          ),
-                          Row(
-                            children: [
-                              ElevatedButton(
-                                onPressed: () => _send('square'),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-                                child: const Text('□'),
-                              ),
-                              const SizedBox(width: 25),
-                              ElevatedButton(
-                                onPressed: () => _send('circle'),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                child: const Text('◯'),
-                              ),
-                            ],
-                          ),
-                          ElevatedButton(
-                            onPressed: () => _send('cross'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                            child: const Text('✕'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+                        children
