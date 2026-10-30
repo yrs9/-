@@ -17,7 +17,7 @@ class PS4RemoteApp extends StatelessWidget {
   }
 }
 
-// 1. شاشة إدخال رمز الاقتران (PIN) والحصول عليه من إعدادات الـ PS4
+// 1. شاشة إدخال رمز الاقتران (PIN)
 class PairingScreen extends StatefulWidget {
   const PairingScreen({super.key});
 
@@ -31,21 +31,17 @@ class _PairingScreenState extends State<PairingScreen> {
 
   Future<void> _pairDevice() async {
     final pin = _pinController.text.trim();
-    if (pin.isEmpty || pin.length < 8) {
+    if (pin.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال رمز الاقتران الصحيح المكون من أرقام الحروف من البلايستيشن')),
+        const SnackBar(content: Text('الرجاء إدخال رمز الاقتران')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
-    // محاكاة الاتصال وطلب الربط عبر الشبكة المحلية باستخدام رمز PIN
-    await Future.delayed(const Duration(seconds: 15));
-
+    await Future.delayed(const Duration(seconds: 3));
     setState(() => _isLoading = false);
 
-    // الانتقال لشاشة التحكم واللعب بعد نجاح الربط
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -90,7 +86,7 @@ class _PairingScreenState extends State<PairingScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: _isLoading
-                  const CircularProgressIndicator(color: Colors.white)
+                  ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('ربط الجهاز وعرض الشاشة', style: TextStyle(fontSize: 16)),
             ),
           ],
@@ -100,7 +96,7 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 }
 
-// 2. شاشة واجهة التحكم والأزرار التي تظهر بعد الربط
+// 2. شاشة واجهة التحكم والأزرار
 class ControllerScreen extends StatefulWidget {
   const ControllerScreen({super.key});
 
@@ -111,7 +107,6 @@ class ControllerScreen extends StatefulWidget {
 class _ControllerScreenState extends State<ControllerScreen> {
   Future<void> _send(String cmd) async {
     try {
-      // إرسال أمر التحكم عبر بروتوكول الشبكة المحلية للـ PS4 المهكر
       await http.get(Uri.parse('http://192.168.1.50:7000/cmd?action=$cmd')).timeout(const Duration(milliseconds: 500));
     } catch (_) {}
     ScaffoldMessenger.of(context).showSnackBar(
@@ -140,10 +135,9 @@ class _ControllerScreenState extends State<ControllerScreen> {
       ),
       body: Column(
         children: [
-          // شاشة عرض محاكاة البث أو مكان العرض المرئي للعبة
           Expanded(
             flex: 4,
-            container(
+            child: Container(
               color: Colors.grey[900],
               child: const Center(
                 child: Text(
@@ -154,8 +148,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
               ),
             ),
           ),
-          
-          // أزرار التحكم السفلية
           Expanded(
             flex: 5,
             child: Padding(
@@ -163,7 +155,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // أزرار علوية L1/R1 و Share/Options
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -190,12 +181,9 @@ class _ControllerScreenState extends State<ControllerScreen> {
                       ),
                     ],
                   ),
-                  
-                  // الأزرار الرئيسية (الاتجاهات والأشكال)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // D-Pad
                       Column(
                         children: [
                           ElevatedButton(onPressed: () => _send('up'), child: const Text('▲')),
@@ -209,8 +197,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
                           ElevatedButton(onPressed: () => _send('down'), child: const Text('▼')),
                         ],
                       ),
-                      
-                      // Shape Buttons (Triangle, Circle, Cross, Square)
                       Column(
                         children: [
                           ElevatedButton(
