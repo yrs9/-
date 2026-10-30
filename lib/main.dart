@@ -17,7 +17,7 @@ class PS4RemoteApp extends StatelessWidget {
   }
 }
 
-// 1. شاشة إدخال رمز الاقتران (PIN)
+// 1. شاشة إدخال رمز الاقتران (PIN) أو الـ IP
 class PairingScreen extends StatefulWidget {
   const PairingScreen({super.key});
 
@@ -27,32 +27,35 @@ class PairingScreen extends StatefulWidget {
 
 class _PairingScreenState extends State<PairingScreen> {
   final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _ipController = TextEditingController(text: '192.168.1.');
   bool _isLoading = false;
 
   Future<void> _pairDevice() async {
     final pin = _pinController.text.trim();
-    if (pin.isEmpty) {
+    final ip = _ipController.text.trim();
+    
+    if (pin.isEmpty || ip.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال رمز الاقتران')),
+        const SnackBar(content: Text('الرجاء إدخال رمز الاقتران وعنوان الـ IP')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
     setState(() => _isLoading = false);
 
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const ControllerScreen()),
+      MaterialPageRoute(builder: (context) => ControllerScreen(ps4Ip: ip)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ربط PS4 عبر رمز PIN'), backgroundColor: Colors.black),
+      appBar: AppBar(title: const Text('إعدادات الاتصال بـ PS4'), backgroundColor: Colors.black),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -62,17 +65,27 @@ class _PairingScreenState extends State<PairingScreen> {
             const Icon(Icons.gamepad, size: 80, color: Colors.blueAccent),
             const SizedBox(height: 20),
             const Text(
-              'للحصول على رمز PIN من جهاز الـ PS4 اذهب إلى:\nالإعدادات ➔ النظام ➔ اللعب عن بعد ➔ ربط جهاز',
+              'أدخل عنوان IP الخاص بجهاز PS4 ورقم PIN الظاهر على الشاشة',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _ipController,
+              decoration: const InputDecoration(
+                labelText: 'عنوان IP لجهاز PS4 (مثال: 192.168.1.50)',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: Color(0xFF1E1E1E),
+              ),
+            ),
+            const SizedBox(height: 15),
             TextField(
               controller: _pinController,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, letterSpacing: 2),
+              style: const TextStyle(fontSize: 18, letterSpacing: 2),
               decoration: const InputDecoration(
-                labelText: 'أدخل رمز الاقتران (PIN)',
+                labelText: 'رمز الاقتران (PIN)',
                 border: OutlineInputBorder(),
                 filled: true,
                 fillColor: Color(0xFF1E1E1E),
@@ -87,7 +100,7 @@ class _PairingScreenState extends State<PairingScreen> {
               ),
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('ربط الجهاز وعرض الشاشة', style: TextStyle(fontSize: 16)),
+                  : const Text('اتصال وبدء اللعب', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
@@ -98,7 +111,8 @@ class _PairingScreenState extends State<PairingScreen> {
 
 // 2. شاشة واجهة التحكم والأزرار
 class ControllerScreen extends StatefulWidget {
-  const ControllerScreen({super.key});
+  final String ps4Ip;
+  const ControllerScreen({super.key, required this.ps4Ip});
 
   @override
   State<ControllerScreen> createState() => _ControllerScreenState();
@@ -107,10 +121,10 @@ class ControllerScreen extends StatefulWidget {
 class _ControllerScreenState extends State<ControllerScreen> {
   Future<void> _send(String cmd) async {
     try {
-      await http.get(Uri.parse('http://192.168.1.50:7000/cmd?action=$cmd')).timeout(const Duration(milliseconds: 500));
+      await http.get(Uri.parse('http://${widget.ps4Ip}:7000/cmd?action=$cmd')).timeout(const Duration(milliseconds: 500));
     } catch (_) {}
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تم تنفيذ الأمر: $cmd'), duration: const Duration(milliseconds: 200)),
+      SnackBar(content: Text('تم إرسال الأمر: $cmd'), duration: const Duration(milliseconds: 200)),
     );
   }
 
@@ -119,7 +133,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('PS4 Remote Play - متصل'),
+        title: Text('متصل بـ: ${widget.ps4Ip}'),
         backgroundColor: Colors.grey[900],
         actions: [
           IconButton(
@@ -136,12 +150,12 @@ class _ControllerScreenState extends State<ControllerScreen> {
       body: Column(
         children: [
           Expanded(
-            flex: 4,
+            flex: 3,
             child: Container(
               color: Colors.grey[900],
               child: const Center(
                 child: Text(
-                  'شاشة عرض اللعب عن بُعد\n(Remote Play Screen)',
+                  'واجهة إرسال الأوامر والتحكم\n(Remote Controller Active)',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white54, fontSize: 16),
                 ),
@@ -149,7 +163,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
             ),
           ),
           Expanded(
-            flex: 5,
+            flex: 6,
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
