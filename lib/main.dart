@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -52,7 +51,6 @@ class _PairingScreenState extends State<PairingScreen> {
     setState(() => _isConnecting = true);
 
     try {
-      // إرسال حزمة المصادقة الأولية عبر منفذ الـ Remote Play
       await http.get(Uri.parse('http://$ip:9293/register?pin=$pin')).timeout(const Duration(seconds: 2));
     } catch (_) {}
 
@@ -135,13 +133,29 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
     } catch (_) {}
   }
 
+  Widget _buildCtrlBtn(String label, VoidCallback onPressed, {Color? color}) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ?? Colors.grey[850]?.withOpacity(0.6),
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. شاشة عرض البث في الخلفية
           Center(
             child: Container(
               color: Colors.grey[900],
@@ -153,15 +167,12 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
               ),
             ),
           ),
-
-          // 2. أزرار التحكم الشفافة فوق شاشة اللعبة (Overlay Controls)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // الشريط العلوي (L1, R1, Share, Options وخروج)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -173,4 +184,60 @@ class _RemotePlayScreenState extends State<RemotePlayScreen> {
                         ],
                       ),
                       IconButton(
-                        icon
+                        icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const PairingScreen()),
+                          );
+                        },
+                      ),
+                      Row(
+                        children: [
+                          _buildCtrlBtn('R1', () => _sendCmd('R1')),
+                          const SizedBox(width: 6),
+                          _buildCtrlBtn('R2', () => _sendCmd('R2')),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        children: [
+                          _buildCtrlBtn('▲', () => _sendCmd('up')),
+                          Row(
+                            children: [
+                              _buildCtrlBtn('◄', () => _sendCmd('left')),
+                              const SizedBox(width: 35),
+                              _buildCtrlBtn('►', () => _sendCmd('right')),
+                            ],
+                          ),
+                          _buildCtrlBtn('▼', () => _sendCmd('down')),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          _buildCtrlBtn('△', () => _sendCmd('triangle'), color: Colors.green.withOpacity(0.7)),
+                          Row(
+                            children: [
+                              _buildCtrlBtn('□', () => _sendCmd('square'), color: Colors.pink.withOpacity(0.7)),
+                              const SizedBox(width: 35),
+                              _buildCtrlBtn('◯', () => _sendCmd('circle'), color: Colors.red.withOpacity(0.7)),
+                            ],
+                          ),
+                          _buildCtrlBtn('✕', () => _sendCmd('cross'), color: Colors.blue.withOpacity(0.7)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
