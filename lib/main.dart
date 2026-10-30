@@ -17,7 +17,7 @@ class PS4RemoteApp extends StatelessWidget {
   }
 }
 
-// 1. شاشة إدخال رمز الاقتران (PIN) أو الـ IP
+// 1. شاشة إدخال IP والـ PIN
 class PairingScreen extends StatefulWidget {
   const PairingScreen({super.key});
 
@@ -27,22 +27,22 @@ class PairingScreen extends StatefulWidget {
 
 class _PairingScreenState extends State<PairingScreen> {
   final TextEditingController _pinController = TextEditingController();
-  final TextEditingController _ipController = TextEditingController(text: '192.168.1.');
+  final TextEditingController _ipController = TextEditingController(text: '192.168.0.');
   bool _isLoading = false;
 
   Future<void> _pairDevice() async {
     final pin = _pinController.text.trim();
     final ip = _ipController.text.trim();
     
-    if (pin.isEmpty || ip.isEmpty) {
+    if (ip.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال رمز الاقتران وعنوان الـ IP')),
+        const SnackBar(content: Text('الرجاء إدخال عنوان الـ IP الخاص بـ PS4')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 15)); // محاكاة عملية الربط وبروتوكول المصادقة
     setState(() => _isLoading = false);
 
     if (!mounted) return;
@@ -55,7 +55,7 @@ class _PairingScreenState extends State<PairingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إعدادات الاتصال بـ PS4'), backgroundColor: Colors.black),
+      appBar: AppBar(title: const Text('ربط PS4 Remote Play'), backgroundColor: Colors.black),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -65,7 +65,7 @@ class _PairingScreenState extends State<PairingScreen> {
             const Icon(Icons.gamepad, size: 80, color: Colors.blueAccent),
             const SizedBox(height: 20),
             const Text(
-              'أدخل عنوان IP الخاص بجهاز PS4 ورقم PIN الظاهر على الشاشة',
+              'أدخل عنوان IP الخاص بجهاز PS4 ورقم PIN للبدء',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
@@ -73,7 +73,7 @@ class _PairingScreenState extends State<PairingScreen> {
             TextField(
               controller: _ipController,
               decoration: const InputDecoration(
-                labelText: 'عنوان IP لجهاز PS4 (مثال: 192.168.1.50)',
+                labelText: 'عنوان IP لجهاز PS4',
                 border: OutlineInputBorder(),
                 filled: true,
                 fillColor: Color(0xFF1E1E1E),
@@ -100,7 +100,7 @@ class _PairingScreenState extends State<PairingScreen> {
               ),
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('اتصال وبدء اللعب', style: TextStyle(fontSize: 16)),
+                  : const Text('اتصال وعرض الشاشة', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
@@ -109,7 +109,7 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 }
 
-// 2. شاشة واجهة التحكم والأزرار
+// 2. شاشة التحكم وعرض البث المباشر
 class ControllerScreen extends StatefulWidget {
   final String ps4Ip;
   const ControllerScreen({super.key, required this.ps4Ip});
@@ -123,9 +123,6 @@ class _ControllerScreenState extends State<ControllerScreen> {
     try {
       await http.get(Uri.parse('http://${widget.ps4Ip}:7000/cmd?action=$cmd')).timeout(const Duration(milliseconds: 500));
     } catch (_) {}
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تم إرسال الأمر: $cmd'), duration: const Duration(milliseconds: 200)),
-    );
   }
 
   @override
@@ -133,7 +130,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text('متصل بـ: ${widget.ps4Ip}'),
+        title: Text('متصل: ${widget.ps4Ip}'),
         backgroundColor: Colors.grey[900],
         actions: [
           IconButton(
@@ -149,23 +146,42 @@ class _ControllerScreenState extends State<ControllerScreen> {
       ),
       body: Column(
         children: [
+          // شاشة عرض البث المباشر أو محاكي الفيديو المحلي
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Container(
-              color: Colors.grey[900],
-              child: const Center(
-                child: Text(
-                  'واجهة إرسال الأوامر والتحكم\n(Remote Controller Active)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 16),
-                ),
+              color: Colors.black,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // مكان تدفق الفيديو (Video Stream View)
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'جاري استقبال البث من:\nhttp://${widget.ps4Ip}:9293',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Icon(Icons.cast_connected, color: Colors.green, size: 20),
+                  ),
+                ],
               ),
             ),
           ),
+          
+          // أزرار التحكم بلايستيشن
           Expanded(
-            flex: 6,
+            flex: 5,
             child: Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(10.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -175,21 +191,21 @@ class _ControllerScreenState extends State<ControllerScreen> {
                       Row(
                         children: [
                           ElevatedButton(onPressed: () => _send('L2'), child: const Text('L2')),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 4),
                           ElevatedButton(onPressed: () => _send('L1'), child: const Text('L1')),
                         ],
                       ),
                       Row(
                         children: [
                           ElevatedButton(onPressed: () => _send('share'), child: const Text('Share')),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 4),
                           ElevatedButton(onPressed: () => _send('options'), child: const Text('Options')),
                         ],
                       ),
                       Row(
                         children: [
                           ElevatedButton(onPressed: () => _send('R1'), child: const Text('R1')),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 4),
                           ElevatedButton(onPressed: () => _send('R2'), child: const Text('R2')),
                         ],
                       ),
@@ -204,7 +220,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
                           Row(
                             children: [
                               ElevatedButton(onPressed: () => _send('left'), child: const Text('◄')),
-                              const SizedBox(width: 30),
+                              const SizedBox(width: 25),
                               ElevatedButton(onPressed: () => _send('right'), child: const Text('►')),
                             ],
                           ),
@@ -225,7 +241,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
                                 child: const Text('□'),
                               ),
-                              const SizedBox(width: 30),
+                              const SizedBox(width: 25),
                               ElevatedButton(
                                 onPressed: () => _send('circle'),
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
