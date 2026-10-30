@@ -1,146 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-void main() {
-  runApp(const PS4ControllerApp());
-}
+void main() => runApp(const MyApp());
 
-class PS4ControllerApp extends StatelessWidget {
-  const PS4ControllerApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'PS4 Remote Controller',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-      ),
-      home: const ControllerHomePage(),
+      home: ControllerScreen(),
     );
   }
 }
 
-class ControllerHomePage extends StatefulWidget {
-  const ControllerHomePage({super.key});
+class ControllerScreen extends StatefulWidget {
+  const ControllerScreen({super.key});
 
   @override
-  State<ControllerHomePage> createState() => _ControllerHomePageState();
+  State<ControllerScreen> createState() => _ControllerScreenState();
 }
 
-class _ControllerHomePageState extends State<ControllerHomePage> {
-  final TextEditingController _ipController = TextEditingController(text: '192.168.1.');
-  bool _isConnected = false;
+class _ControllerScreenState extends State<ControllerScreen> {
+  final TextEditingController _ipCtrl = TextEditingController(text: '192.168.1.');
 
-  // دالة لإرسال الأوامر إلى الـ PS4 عبر الشبكة المحلية
-  Future<void> _sendCommand(String command) async {
-    final ip = _ipController.text.trim();
-    if (ip.isEmpty) {
-      _showMsg('الرجاء إدخال عنوان الـ IP أولاً');
-      return;
-    }
-
-    final url = Uri.parse('http://$ip:7000/cmd?action=$command');
-
+  Future<void> _send(String cmd) async {
+    final ip = _ipCtrl.text.trim();
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 2));
-      if (response.statusCode == 200) {
-        setState(() => _isConnected = true);
-      } else {
-        _showMsg('استجابة غير متوقعة من الجهاز');
-      }
-    } catch (e) {
-      setState(() => _isConnected = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إرسال الأمر: $command (IP:$ip)'), duration: const Duration(milliseconds: 500)),
-      );
-    }
-  }
-
-  void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      await http.get(Uri.parse('http://$ip:7000/cmd?action=$cmd')).timeout(const Duration(seconds: 1));
+    } catch (_) {}
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تم إرسال: $cmd'), duration: const Duration(milliseconds: 300)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('PS4 Remote Controller'),
-        backgroundColor: const Color(0xFF1F1F1F),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isConnected ? Colors.green : Colors.red,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(_isConnected ? 'متصل' : 'غير متصل', style: const TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
+      backgroundColor: Colors.grey[900],
+      appBar: AppBar(title: const Text('PS4 Remote Controller'), backgroundColor: Colors.black),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+      children: [
+        Row(
           children: [
-            // حقل إدخال عنوان IP للـ PS4
-            Row(
+            Expanded(
+              child: TextField(
+                controller: _ipCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'PS4 IP', border: OutlineInputBorder()),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(onPressed: () => _send('connect'), child: const Text('اتصال')),
+          ],
+        ),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            ElevatedButton(onPressed: () => _send('L1'), child: const Text('L1')),
+            ElevatedButton(onPressed: () => _send('share'), child: const Text('Share')),
+            ElevatedButton(onPressed: () => _send('options'), child: const Text('Options')),
+            ElevatedButton(onPressed: () => _send('R1'), child: const Text('R1')),
+          ],
+        ),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ipController,
-                    decoration: const InputDecoration(
-                      labelText: 'عنوان IP الخاص بـ PS4',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Color(0xFF1E1E1E),
-                    ),
-                  ),
+                ElevatedButton(onPressed: () => _send('up'), child: const Text('▲')),
+                Row(
+                  children: [
+                    ElevatedButton(onPressed: () => _send('left'), child: const Text('◄')),
+                    const SizedBox(width: 30),
+                    ElevatedButton(onPressed: () => _send('right'), child: const Text('►')),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    _sendCommand('connect');
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-                  child: const Text('اتصال'),
-                ),
+                ElevatedButton(onPressed: () => _send('down'), child: const Text('▼')),
               ],
             ),
-            const SizedBox(height: 20),
-
-            // أزرار العلوية (L1, R1, L2, R2, Share, Options)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
               children: [
+                ElevatedButton(onPressed: () => _send('triangle'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('△')),
                 Row(
                   children: [
-                    _buildButton('L2', () => _sendCommand('L2')),
-                    const SizedBox(width: 8),
-                    _buildButton('L1', () => _sendCommand('L1')),
+                    ElevatedButton(onPressed: () => _send('square'), style: ElevatedButton.styleFrom(backgroundColor: Colors.pink), child: const Text('□')),
+                    const SizedBox(width: 30),
+                    ElevatedButton(onPressed: () => _send('circle'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text('◯')),
                   ],
                 ),
-                Row(
-                  children: [
-                    _buildButton('Share', () => _sendCommand('share')),
-                    const SizedBox(width: 8),
-                    _buildButton('Options', () => _sendCommand('options')),
-                  ],
-                ),
-                Row(
-                  children: [
-                    _buildButton('R1', () => _sendCommand('R1')),
-                    const SizedBox(width: 8),
-                    _buildButton('R2',
+                ElevatedButton(onPressed: () => _send('cross'), style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), child: const Text('✕')),
+              ],
+            
