@@ -48,7 +48,6 @@ class _PairingScreenState extends State<PairingScreen> {
     });
 
     try {
-      // إرسال طلب بروتوكولي عبر بورت الـ Remote Play / Web API للـ PS4 المعدل
       await http.get(
         Uri.parse('http://$ip:9293/api/v1/login?pin=$pin'),
       ).timeout(const Duration(seconds: 3));
@@ -134,7 +133,7 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 }
 
-// 2. شاشة التحكم واستقبال البث
+// 2. شاشة واجهة التحكم وعرض البث
 class ControllerScreen extends StatefulWidget {
   final String ps4Ip;
   const ControllerScreen({super.key, required this.ps4Ip});
@@ -231,4 +230,67 @@ class _ControllerScreenState extends State<ControllerScreen> {
                         ],
                       ),
                       Row(
-                        children
+                        children: [
+                          ElevatedButton(onPressed: () => _send('R1'), child: const Text('R1')),
+                          const SizedBox(width: 4),
+                          ElevatedButton(onPressed: () => _send('R2'), child: const Text('R2')),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        children: [
+                          ElevatedButton(onPressed: () => _send('up'), child: const Text('▲')),
+                          Row(
+                            children: [
+                              ElevatedButton(onPressed: () => _send('left'), child: const Text('◄')),
+                              const SizedBox(width: 25),
+                              ElevatedButton(onPressed: () => _send('right'), child: const Text('►')),
+                            ],
+                          ),
+                          ElevatedButton(onPressed: () => _send('down'), child: const Text('▼')),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () => _send('triangle'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            child: const Text('△'),
+                          ),
+                          Row(
+                            children: [
+                              ElevatedButton(
+                                onPressed: () => _send('square'),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
+                                child: const Text('□'),
+                              ),
+                              const SizedBox(width: 25),
+                              ElevatedButton(
+                                onPressed: () => _send('circle'),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                child: const Text('◯'),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton(
+                            onPressed: () => _send('cross'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                            child: const Text('✕'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
