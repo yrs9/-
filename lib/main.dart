@@ -42,7 +42,6 @@ class _ControllerHomePageState extends State<ControllerHomePage> {
       return;
     }
 
-    // افتراض بورت الاتصال (يمكن تعديله حسب سكريبت الـ GoldHEN أو الـ Payload المستخدم)
     final url = Uri.parse('http://$ip:7000/cmd?action=$command');
 
     try {
@@ -53,10 +52,9 @@ class _ControllerHomePageState extends State<ControllerHomePage> {
         _showMsg('استجابة غير متوقعة من الجهاز');
       }
     } catch (e) {
-      // محاكاة الاتصال أو التعامل مع عدم وجود الخادم الفعلي حالياً
       setState(() => _isConnected = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إرسال الأمر: $command (IP: $ip)'), duration: const Duration(milliseconds: 500)),
+        SnackBar(content: Text('تم إرسال الأمر: $command (IP:$ip)'), duration: const Duration(milliseconds: 500)),
       );
     }
   }
@@ -145,97 +143,4 @@ class _ControllerHomePageState extends State<ControllerHomePage> {
                   children: [
                     _buildButton('R1', () => _sendCommand('R1')),
                     const SizedBox(width: 8),
-                    _buildButton('R2', () => _sendCommand('R2')),
-                  ],
-                ),
-              ],
-            ),
-            const Spacer(),
-
-            // أزرار التحكم الرئيسية (D-pad يساراً وأزرار الأشكال يميناً)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // D-Pad الأاتجاهات
-                SizedBox(
-                  width: 140,
-                  height: 140,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(top: 0, child: _buildDirectionButton('▲', 'up')),
-                      Positioned(bottom: 0, child: _buildDirectionButton('▼', 'down')),
-                      Positioned(left: 0, child: _buildDirectionButton('◄', 'left')),
-                      Positioned(right: 0, child: _buildDirectionButton('►', 'right')),
-                    ],
-                  ),
-                ),
-
-                // الأزرار الأربعة (مثلث، مربع، دائرة، إكس)
-                SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(top: 0, child: _buildActionButton('△', Colors.green, 'triangle')),
-                      Positioned(bottom: 0, child: _buildActionButton('✕', Colors.blue, 'cross')),
-                      Positioned(left: 0, child: _buildActionButton('□', Colors.pink, 'square')),
-                      Positioned(right: 0, child: _buildActionButton('◯', Colors.red, 'circle')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButton(String label, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF2C2C2C),
-        foregroundColor: Colors.white,
-        padding: const SymmetricPadding(horizontal: 16, vertical: 12),
-      ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _buildDirectionButton(String label, String cmd) {
-    return SizedBox(
-      width: 45,
-      height: 45,
-      child: ElevatedButton(
-        onPressed: () => _sendCommand(cmd),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF333333),
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.zero,
-        ),
-        child: Text(label, style: const TextStyle(fontSize: 18)),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String label, Color color, String cmd) {
-    return SizedBox(
-      width: 45,
-      height: 45,
-      child: ElevatedButton(
-        onPressed: () => _sendCommand(cmd),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.8),
-          foregroundColor: Colors.white,
-          shape: const CircleBorder(),
-          padding: EdgeInsets.zero,
-        ),
-        child: Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-}
+                    _buildButton('R2',
